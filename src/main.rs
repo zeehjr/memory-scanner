@@ -59,6 +59,27 @@ fn open_process(pid: u32) -> Result<Process32, windows::core::Error> {
     }
 }
 
+fn search_for_dword(base_address: u32, buffer: Vec<u8>, value: i32) -> Vec<u32> {
+    let buffer_iter = buffer.into_iter();
+
+    // TODO: find a way to avoid cloning
+    buffer_iter
+        .clone()
+        .enumerate()
+        .filter_map(|(index, _)| {
+            let dword_buffer = buffer_iter.clone().skip(index).take(4).collect::<Vec<u8>>();
+
+            let dword_value = i32::from_le_bytes(dword_buffer.try_into().unwrap_or([0; 4]));
+
+            if dword_value == value {
+                return Some((index as u32 * 4) + base_address);
+            }
+
+            None
+        })
+        .collect::<Vec<u32>>()
+}
+
 fn main() -> () {
     let process = open_process(0x8a18).expect("Could not open process with the specified PID.");
 
@@ -70,34 +91,15 @@ fn main() -> () {
         .into_par_iter()
         .step_by(chunk_size)
         .map(|addr| {
-            let remaining_space = (end_address - addr).try_into().unwrap();
-            let size = cmp::min(chunk_size, remaining_space);
-            let buffer = process.read_buffer(addr, size);
-            let buffer_iter = buffer.into_iter();
-
-            let matching_addresses = buffer_iter
-                .clone()
-                .enumerate()
-                .filter_map(|(index, _)| {
-                    let dword_buffer = buffer_iter.clone().skip(index).take(4).collect::<Vec<u8>>();
-
-                    let value = i32::from_le_bytes(dword_buffer.try_into().unwrap_or([0; 4]));
-
-                    if value == 100 {
-                        return Some((index as u32 * 4) + addr);
-                    }
-
-                    None
-                })
-                .collect::<Vec<u32>>();
-
-            matching_addresses
+            (
+                addr,
+                process.read_buffer(addr, cmp::min(chunk_size, (end_address - addr) as usize)),
+            )
         })
-        .reduce(
-            || vec![] as Vec<u32>,
-            |a, b| [a.as_slice(), b.as_slice()].concat(),
-        );
+        .flat_map(|(addr, buffer)| search_for_dword(addr, buffer, 100))
+        .collect::<Vec<u32>>();
 
+    // TODO: find a way to sort inside the pipeline
     results.sort();
 
     println!("Total: {}", results.len());
