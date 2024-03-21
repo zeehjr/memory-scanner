@@ -4,7 +4,9 @@ use windows::Win32::{
     Foundation::HANDLE,
     System::{
         Diagnostics::{Debug::ReadProcessMemory, ToolHelp::MODULEENTRY32W},
-        Memory::{VirtualQueryEx, MEMORY_BASIC_INFORMATION, MEM_COMMIT, PAGE_GUARD},
+        Memory::{
+            VirtualQueryEx, MEMORY_BASIC_INFORMATION, MEM_COMMIT, PAGE_GUARD, PAGE_READWRITE,
+        },
         Threading::{OpenProcess, PROCESS_ALL_ACCESS},
     },
 };
@@ -94,7 +96,10 @@ impl Process32 {
         while i < end_address {
             let mem_info = self.query_memory_info(i);
 
-            if mem_info.State == MEM_COMMIT && mem_info.Protect != PAGE_GUARD {
+            if mem_info.State == MEM_COMMIT
+                && mem_info.Protect & PAGE_GUARD != PAGE_GUARD
+                && mem_info.Protect & PAGE_READWRITE == PAGE_READWRITE
+            {
                 let buffer = self.read_buffer(mem_info.BaseAddress as u32, mem_info.RegionSize);
 
                 let mut current = 0;

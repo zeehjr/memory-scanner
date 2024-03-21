@@ -78,7 +78,7 @@ fn main() -> () {
     //     0x0fffffff,
     // );
 
-    let addresses = process.scan_dword(100, 0x0, 0x0fffffff);
+    let addresses = process.scan_dword(565, 0x0, 0x7fffffff);
 
     println!("Found addresses: {}", addresses.len());
 
@@ -86,7 +86,7 @@ fn main() -> () {
     //     .into_iter()
     //     .for_each(|address| println!("{:X}", address));
 
-    // println!("Has address: {}", addresses.contains(&0x011099E8))
+    println!("Has address: {}", addresses.contains(&0x0801C08C))
 }
 
 #[cfg(test)]
