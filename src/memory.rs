@@ -4,6 +4,7 @@ use windows::Win32::{
     Foundation::HANDLE,
     System::{
         Diagnostics::{Debug::ReadProcessMemory, ToolHelp::MODULEENTRY32W},
+        Memory::{VirtualQueryEx, MEMORY_BASIC_INFORMATION, MEM_COMMIT, PAGE_GUARD},
         Threading::{OpenProcess, PROCESS_ALL_ACCESS},
     },
 };
@@ -70,65 +71,54 @@ impl Process32 {
         list_process_modules(self.process_id)
     }
 
-    pub fn scan_dword(&self, value: i32, start_address: u32, end_address: u32) -> Vec<u32> {
-        let aob = value.to_be_bytes();
+    pub fn query_memory_info(&self, address: u32) -> MEMORY_BASIC_INFORMATION {
+        let mut data: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
+        let size = std::mem::size_of::<MEMORY_BASIC_INFORMATION>();
 
-        self.scan_aob(&aob, start_address, end_address, Some(6000))
+        unsafe { VirtualQueryEx(self.handle, Some(address as *const c_void), &mut data, size) };
+
+        data
     }
 
-    pub fn scan_aob(
-        &self,
-        aob: &[u8],
-        start_address: u32,
-        end_address: u32,
-        chunk_size: Option<usize>,
-    ) -> Vec<u32> {
-        let chunk_size = match chunk_size {
-            Some(size) => size,
-            None => 6000,
-        };
+    pub fn scan_dword(&self, value: i32, start_address: u32, end_address: u32) -> Vec<u32> {
+        let aob = value.to_le_bytes();
 
-        let mut current_address = start_address;
+        self.scan_aob(&aob, start_address, end_address)
+    }
 
-        let mut buffer: Vec<u8> = vec![];
-
+    pub fn scan_aob(&self, aob: &[u8], start_address: u32, end_address: u32) -> Vec<u32> {
         let mut matching_addresses: Vec<u32> = vec![];
 
-        while current_address < end_address {
-            let buffer_size = std::cmp::min(chunk_size, (end_address - current_address) as usize);
+        let mut i: u32 = start_address;
 
-            let new_buffer = self.read_buffer(current_address, buffer_size);
+        while i < end_address {
+            let mem_info = self.query_memory_info(i);
 
-            let mut current_aob_address: u32 = current_address;
+            if mem_info.State == MEM_COMMIT && mem_info.Protect != PAGE_GUARD {
+                let buffer = self.read_buffer(mem_info.BaseAddress as u32, mem_info.RegionSize);
 
-            if buffer.len() > aob.len() {
-                let old_buffer = buffer.clone().as_slice()[buffer.len() - aob.len() + 1..].to_vec();
-                buffer = [old_buffer.as_slice(), new_buffer.as_slice()].concat();
+                let mut current = 0;
+                let mut current_aob_address: u32 = mem_info.BaseAddress as u32;
 
-                current_aob_address = current_aob_address - aob.len() as u32 + 1;
-            } else {
-                buffer = new_buffer;
-            }
+                for offset in 0..buffer.len() {
+                    if buffer[offset] == aob[current] {
+                        if current == 0 {
+                            current_aob_address = mem_info.BaseAddress as u32 + offset as u32;
+                        }
 
-            let mut current = 0;
-
-            for (index, byte) in buffer.clone().into_iter().enumerate() {
-                if byte == aob[current] {
-                    if current == 0 {
-                        current_aob_address = current_address + index as u32
+                        current = current + 1;
+                    } else {
+                        current = 0;
                     }
-                    current = current + 1
-                } else {
-                    current = 0
-                }
 
-                if current == aob.len() {
-                    matching_addresses.push(current_aob_address);
-                    current = 0;
+                    if current == aob.len() {
+                        matching_addresses.push(current_aob_address);
+                        current = 0;
+                    }
                 }
             }
 
-            current_address = current_address + buffer_size as u32;
+            i = mem_info.BaseAddress as u32 + mem_info.RegionSize as u32;
         }
 
         matching_addresses

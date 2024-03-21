@@ -1,5 +1,3 @@
-use std::ffi::c_void;
-
 use windows::Win32::{
     Foundation::{CloseHandle, HANDLE, HMODULE},
     System::{
@@ -7,7 +5,6 @@ use windows::Win32::{
             CreateToolhelp32Snapshot, Module32FirstW, Module32NextW, MODULEENTRY32W,
             TH32CS_SNAPMODULE,
         },
-        Memory::{VirtualQueryEx, MEMORY_BASIC_INFORMATION},
         ProcessStatus::{EnumProcessModules, GetModuleFileNameExW},
     },
 };
@@ -70,17 +67,4 @@ pub fn list_process_modules(process_id: u32) -> Vec<MODULEENTRY32W> {
     unsafe { CloseHandle(h_snapshot).unwrap() };
 
     modules
-}
-
-#[allow(dead_code)]
-pub fn get_module_memory_basic_information(
-    process_handle: HANDLE,
-    address: Option<*const c_void>,
-) -> MEMORY_BASIC_INFORMATION {
-    let mut data: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
-    let size = std::mem::size_of::<MEMORY_BASIC_INFORMATION>();
-
-    unsafe { VirtualQueryEx(process_handle, address, &mut data, size) };
-
-    data
 }

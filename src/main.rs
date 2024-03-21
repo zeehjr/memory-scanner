@@ -72,6 +72,12 @@ fn scan() {
 fn main() -> () {
     let process = Process32::new(0x00008A18).expect("error while trying to get access to process");
 
+    // let addresses = process.scan_aob(
+    //     &[0xFF, 0xFF, 0xFF, 0xFF, 0x5F, 0xFF, 0xEF, 0xFF],
+    //     0x00000000,
+    //     0x0fffffff,
+    // );
+
     let addresses = process.scan_dword(100, 0x0, 0x0fffffff);
 
     println!("Found addresses: {}", addresses.len());
@@ -80,7 +86,7 @@ fn main() -> () {
     //     .into_iter()
     //     .for_each(|address| println!("{:X}", address));
 
-    println!("Has address: {}", addresses.contains(&0x011099E8))
+    // println!("Has address: {}", addresses.contains(&0x011099E8))
 }
 
 #[cfg(test)]
