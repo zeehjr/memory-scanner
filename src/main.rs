@@ -1,63 +1,11 @@
+use memory::Process32;
 use rayon::prelude::*;
 use std::cmp;
 use std::fs::File;
 use std::io::Write;
-use std::os::raw::c_void;
 
-use windows::Win32::Foundation::HANDLE;
-use windows::Win32::System::Diagnostics::Debug::{ReadProcessMemory, WriteProcessMemory};
-
-use windows::Win32::System::Threading::{OpenProcess, PROCESS_ALL_ACCESS};
-
-struct Process32 {
-    handle: HANDLE,
-}
-
-#[allow(dead_code)]
-impl Process32 {
-    fn read_dword(&self, address: i32) -> i32 {
-        let mut buffer: [u8; 4] = [0; 4];
-
-        unsafe {
-            ReadProcessMemory(
-                self.handle,
-                address as *const c_void,
-                buffer.as_mut_ptr().cast(),
-                4,
-                None,
-            )
-            .unwrap_or(())
-        };
-
-        i32::from_le_bytes(buffer)
-    }
-
-    fn read_buffer(&self, address: u32, size: usize) -> Vec<u8> {
-        let mut buffer: Vec<u8> = vec![0; size];
-
-        unsafe {
-            ReadProcessMemory(
-                self.handle,
-                address as *const c_void,
-                buffer.as_mut_ptr().cast(),
-                size,
-                None,
-            )
-            .unwrap_or(());
-        }
-
-        return buffer;
-    }
-}
-
-fn open_process(pid: u32) -> Result<Process32, windows::core::Error> {
-    let result = unsafe { OpenProcess(PROCESS_ALL_ACCESS, false, pid) };
-
-    match result {
-        Ok(handle) => Ok(Process32 { handle }),
-        Err(error) => Err(error),
-    }
-}
+mod memory;
+mod windows_modules;
 
 fn search_for_dword(base_address: u32, buffer: Vec<u8>, value: i32) -> Vec<u32> {
     let buffer_iter = buffer.into_iter();
@@ -80,8 +28,9 @@ fn search_for_dword(base_address: u32, buffer: Vec<u8>, value: i32) -> Vec<u32> 
         .collect::<Vec<u32>>()
 }
 
-fn main() -> () {
-    let process = open_process(0x8a18).expect("Could not open process with the specified PID.");
+#[allow(dead_code)]
+fn scan() {
+    let process = Process32::new(0x8a18).expect("error while trying to get access to process");
 
     let start_address: u32 = 0x00000000;
     let end_address: u32 = 0x0fffffff;
@@ -118,6 +67,20 @@ fn main() -> () {
         .join("\n");
 
     file.write(txt.as_bytes()).unwrap();
+}
+
+fn main() -> () {
+    let process = Process32::new(0x00008A18).expect("error while trying to get access to process");
+
+    let addresses = process.scan_dword(100, 0x0, 0x0fffffff);
+
+    println!("Found addresses: {}", addresses.len());
+
+    // addresses
+    //     .into_iter()
+    //     .for_each(|address| println!("{:X}", address));
+
+    println!("Has address: {}", addresses.contains(&0x011099E8))
 }
 
 #[cfg(test)]
