@@ -9,6 +9,7 @@ use windows::Win32::{
     },
 };
 
+#[allow(dead_code)]
 pub fn list_process_module_names(
     process_handle: HANDLE,
 ) -> Result<Vec<String>, windows::core::Error> {
@@ -43,6 +44,7 @@ pub fn list_process_module_names(
     Ok(module_names)
 }
 
+#[allow(dead_code)]
 pub fn list_process_modules(process_id: u32) -> Vec<MODULEENTRY32W> {
     let mut modules: Vec<MODULEENTRY32W> = vec![];
 

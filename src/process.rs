@@ -129,24 +129,10 @@ impl<T: Address> Process<T> {
             {
                 let buffer = self.read_buffer(mem_info.BaseAddress, mem_info.RegionSize);
 
-                let mut current = 0;
-                let mut current_aob_address: T = T::from_ptr(mem_info.BaseAddress);
-
                 for offset in 0..buffer.len() {
-                    if buffer[offset] == aob[current] {
-                        if current == 0 {
-                            current_aob_address =
-                                T::from_ptr(mem_info.BaseAddress) + T::from_usize(offset);
-                        }
-
-                        current = current + 1;
-                    } else {
-                        current = 0;
-                    }
-
-                    if current == aob.len() {
-                        matching_addresses.push(current_aob_address);
-                        current = 0;
+                    if buffer[offset] == aob[0] && buffer[offset..].starts_with(aob) {
+                        matching_addresses
+                            .push(T::from_ptr(mem_info.BaseAddress) + T::from_usize(offset))
                     }
                 }
             }
@@ -164,5 +150,44 @@ impl<T: Address> Process<T> {
         unsafe { VirtualQueryEx(self.handle, Some(address.as_ptr()), &mut data, size) };
 
         data
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Define a mock implementation of the Process32 struct for testing purposes
+    struct MockProcess;
+
+    impl MockProcess {
+        fn query_memory_info(&self, address: u32) -> MEMORY_BASIC_INFORMATION {
+            // Mock implementation to return dummy memory information
+            MEMORY_BASIC_INFORMATION::default()
+        }
+
+        fn read_buffer(&self, _address: u32, size: usize) -> Vec<u8> {
+            // Mock implementation to return a buffer filled with zeros
+            vec![0; size]
+        }
+    }
+
+    #[test]
+    fn test_scan_aob() {
+        // Initialize the mock process for testing
+        let process = MockProcess {};
+
+        // Define the AOB pattern to search for
+        let aob: [u8; 3] = [0x12, 0x34, 0x56];
+
+        // Mock memory addresses for start and end
+        let start_address = Address::from_ptr(std::ptr::null());
+        let end_address = Address::from_ptr(std::ptr::null());
+
+        // Call the function to test
+        let result = process.scan_aob(&aob, start_address, end_address);
+
+        // Assert the result against the expected value
+        assert_eq!(result, vec![]); // Add expected result here based on your test case
     }
 }
