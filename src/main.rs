@@ -1,6 +1,6 @@
-use crate::memory::Process32;
+use crate::process32::Process32;
 
-mod memory;
+mod process32;
 mod windows_modules;
 
 fn main() -> () {

@@ -91,10 +91,10 @@ impl Process32 {
     pub fn scan_aob(&self, aob: &[u8], start_address: u32, end_address: u32) -> Vec<u32> {
         let mut matching_addresses: Vec<u32> = vec![];
 
-        let mut i: u32 = start_address;
+        let mut current_address: u32 = start_address;
 
-        while i < end_address {
-            let mem_info = self.query_memory_info(i);
+        while current_address < end_address {
+            let mem_info = self.query_memory_info(current_address);
 
             if mem_info.State == MEM_COMMIT
                 && mem_info.Protect & PAGE_GUARD != PAGE_GUARD
@@ -123,7 +123,7 @@ impl Process32 {
                 }
             }
 
-            i = mem_info.BaseAddress as u32 + mem_info.RegionSize as u32;
+            current_address = mem_info.BaseAddress as u32 + mem_info.RegionSize as u32;
         }
 
         matching_addresses
