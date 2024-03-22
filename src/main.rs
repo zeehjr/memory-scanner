@@ -1,18 +1,12 @@
-use crate::process32::Process32;
+use crate::process::Process64;
 
-mod process32;
+mod process;
 mod windows_modules;
 
 fn main() -> () {
-    let process = Process32::new(0x00008A18).expect("error while trying to get access to process");
+    let process = Process64::new(0x9870).expect("error while trying to get access to process");
 
-    // let addresses = process.scan_aob(
-    //     &[0xFF, 0xFF, 0xFF, 0xFF, 0x5F, 0xFF, 0xEF, 0xFF],
-    //     0x00000000,
-    //     0x0fffffff,
-    // );
-
-    let addresses = process.scan_dword(565, 0x0, 0x7fffffff);
+    let addresses = process.scan_dword(100, 0x0, 0x7fffffff);
 
     println!("Found addresses: {}", addresses.len());
 
@@ -20,7 +14,7 @@ fn main() -> () {
     //     .into_iter()
     //     .for_each(|address| println!("{:X}", address));
 
-    println!("Has address: {}", addresses.contains(&0x0801C08C))
+    println!("Has address: {}", addresses.contains(&0x01107AF4))
 }
 
 #[cfg(test)]
