@@ -111,12 +111,52 @@ pub trait ValueTypeScanner {
         end_address: usize,
         endianess: Endianess,
     ) -> Vec<usize>;
+    fn scan_float32(
+        &self,
+        value: f32,
+        start_address: usize,
+        end_address: usize,
+        endianess: Endianess,
+    ) -> Vec<usize>;
+    fn scan_float64(
+        &self,
+        value: f64,
+        start_address: usize,
+        end_address: usize,
+        endianess: Endianess,
+    ) -> Vec<usize>;
 }
 
 impl<T: MemoryScanner> ValueTypeScanner for T {
     fn scan_dword(
         &self,
         value: i32,
+        start_address: usize,
+        end_address: usize,
+        endianess: Endianess,
+    ) -> Vec<usize> {
+        let bytes = match endianess {
+            Endianess::LittleEndian => value.to_le_bytes(),
+            Endianess::BigEndian => value.to_be_bytes(),
+        };
+        self.scan_aob(&bytes, start_address, end_address)
+    }
+    fn scan_float32(
+        &self,
+        value: f32,
+        start_address: usize,
+        end_address: usize,
+        endianess: Endianess,
+    ) -> Vec<usize> {
+        let bytes = match endianess {
+            Endianess::LittleEndian => value.to_le_bytes(),
+            Endianess::BigEndian => value.to_be_bytes(),
+        };
+        self.scan_aob(&bytes, start_address, end_address)
+    }
+    fn scan_float64(
+        &self,
+        value: f64,
         start_address: usize,
         end_address: usize,
         endianess: Endianess,
