@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.81"
 rayon = "1.9.0"
 windows = { version = "0.54.0", features = [
   "Win32_System_Diagnostics_Debug",

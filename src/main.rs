@@ -1,20 +1,16 @@
-use crate::process::Process64;
+use crate::process::{Endianess, Process, ProcessInfo, ValueTypeScanner};
 
 mod process;
 mod windows_modules;
 
 fn main() -> () {
-    let process = Process64::new(0x9870).expect("error while trying to get access to process");
+    let process: ProcessInfo = Process::open(0x9870).unwrap();
 
-    let addresses = process.scan_dword(100, 0x0, 0x7fffffff);
+    let addresses = process.scan_dword(565, 0x0, 0x7fffffff, Endianess::LittleEndian);
 
     println!("Found addresses: {}", addresses.len());
 
-    // addresses
-    //     .into_iter()
-    //     .for_each(|address| println!("{:X}", address));
-
-    println!("Has address: {}", addresses.contains(&0x01107AF4))
+    println!("Has address: {}", addresses.contains(&0x08027174))
 }
 
 #[cfg(test)]
